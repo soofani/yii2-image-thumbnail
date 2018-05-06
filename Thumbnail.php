@@ -29,7 +29,7 @@ class Thumbnail extends \yii\base\Component
      * Path to cache directory
      * @var string
      */
-    public $cachePath = '@runtime/thumbnails';
+    public $cachePath = '@webroot/assets/thumb';
 
     /**
      * Base path
