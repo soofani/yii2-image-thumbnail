@@ -124,11 +124,7 @@ class Thumbnail extends \yii\base\Component
      */
     public function img($file, $bucket, array $params, $options = [], $schema = false)
     {
-        if(!empty($file)) {
-            $cacheFileSrc = $this->make($file, $bucket, $params);
-        } else {
-            $cacheFileSrc = false;
-        }
+        $cacheFileSrc = $this->make($file, $bucket, $params);
 
         if (!$cacheFileSrc) {
             if (isset($params['placeholder'])) {
@@ -345,6 +341,16 @@ class Thumbnail extends \yii\base\Component
      */
     private function make($filePath, $bucket, array $params)
     {
+
+        // Don't allow empty file name
+        if(empty($filePath) ) {
+            return false;
+        } 
+
+        // Given that this is a thumbnail library we can safely assume that any file name without an extension is invalid.
+        if(empty(strtolower(pathinfo($filePath, PATHINFO_EXTENSION)))) {
+            return false;
+        }
 
         $quality = isset($params['quality']) ? $params['quality'] : $this->options['quality'];
 
