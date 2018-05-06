@@ -373,6 +373,12 @@ class Thumbnail extends \yii\base\Component
         $s3->setRegion($this->options['s3']['region']);
         $s3->setSignatureVersion($this->options['s3']['version']);
 
+        $objectInfo = $s3->getObjectInfo($bucket, $filePath);
+
+        if(!$objectInfo) {
+            return false;
+        }
+
         $tempPath = \Yii::getAlias($this->tempPath);
 
         // Create the temp folder is it doesnt exist
@@ -381,12 +387,7 @@ class Thumbnail extends \yii\base\Component
         }
 
         // Check object on S3
-        $tempFile = $this->tempPath . '/' . basename($filePath);
-        $objectInfo = $s3->getObjectInfo($bucket, $filePath);
-
-        if(!$objectInfo) {
-            return false;
-        }
+        $tempFile = $tempPath . '/' . basename($filePath);
 
         // Download the image from S3 to temp folder
         $object = $s3->getObject($bucket, $filePath, $tempFile);
