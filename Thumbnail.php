@@ -11,6 +11,7 @@ use Imagine\Image\Point;
 use yii\helpers\FileHelper;
 use Kinglozzer\TinyPng\Compressor;
 use Imagine\Image\ManipulatorInterface;
+use sadovojav\image\S3;
 
 /**
  * Class Thumbnail
@@ -18,6 +19,12 @@ use Imagine\Image\ManipulatorInterface;
  */
 class Thumbnail extends \yii\base\Component
 {
+    /**
+     * Path to temp directory
+     * @var null
+     */
+    public $tempPath = '@runtime/temp';
+    
     /**
      * Path to cache directory
      * @var string
@@ -107,16 +114,21 @@ class Thumbnail extends \yii\base\Component
     }
 
     /**
-     * Creates and caches the image thumbnail and returns <img> tag
+     * Creates and caches the image thumbnail from S3 and returns <img> tag
      * @param string $file
+     * @param array $bucket
      * @param array $params
      * @param array $options
      * @param bool $schema
      * @return string
      */
-    public function img($file, array $params, $options = [], $schema = false)
+    public function img($file, $bucket, array $params, $options = [], $schema = false)
     {
-        $cacheFileSrc = $this->make($file, $params);
+        if(!empty($file)) {
+            $cacheFileSrc = $this->make($file, $bucket, $params);
+        } else {
+            $cacheFileSrc = false;
+        }
 
         if (!$cacheFileSrc) {
             if (isset($params['placeholder'])) {
@@ -136,13 +148,14 @@ class Thumbnail extends \yii\base\Component
     /**
      * Creates and caches the image thumbnail and returns image url
      * @param string $file
+     * @param array $bucket
      * @param array $params
      * @param bool $schema
      * @return string
      */
-    public function url($file, array $params, $schema = false)
+    public function url($file, $bucket, array $params, $schema = false)
     {
-        $cacheFileSrc = $this->make($file, $params);
+        $cacheFileSrc = $this->make($file, $bucket, $params);
 
         if (!$cacheFileSrc) {
             if (isset($params['placeholder'])) {
@@ -324,37 +337,28 @@ class Thumbnail extends \yii\base\Component
     }
 
     /**
-     * Make image and save to cache
+     * Make image from S3 and save to cache
      * @param string $filePath
+     * @param string $bucket
      * @param array $params
      * @return string
      */
-    private function make($filePath, array $params)
+    private function make($filePath, $bucket, array $params)
     {
-        if (!is_null($this->basePath)) {
-            $fileFullPath = FileHelper::normalizePath(\Yii::getAlias($this->basePath . '/' . $filePath));
-        } else {
-            $fileFullPath = FileHelper::normalizePath($filePath);
-        }
-
-        $fileFullPath = urldecode($fileFullPath);
-
-        if (!is_file($fileFullPath)) {
-            return false;
-        }
 
         $quality = isset($params['quality']) ? $params['quality'] : $this->options['quality'];
 
-        $cacheFileName = md5($fileFullPath . serialize($params) . $quality . filemtime($fileFullPath));
-        $cacheFileExt = strrchr($fileFullPath, '.');
+        // Generate the cache file path and Url
+        $cacheFileName = md5($filePath . serialize($params) . $quality);
+        $cacheFileExt = strrchr($filePath, '.');
         $cacheFileDir = '/' . substr($cacheFileName, 0, 2);
         $cacheFilePath = \Yii::getAlias($this->cachePath) . $cacheFileDir;
         $cacheFile = $cacheFilePath . '/' . $cacheFileName . $cacheFileExt;
         $cacheUrl = str_replace('\\', '/', preg_replace('/^@[a-z]+/', '', $this->cachePath) . $cacheFileDir . '/'
             . $cacheFileName . $cacheFileExt);
-
         $cacheUrl = !is_null($this->prefixPath) ? $this->prefixPath . $cacheUrl : $cacheUrl;
 
+        // If the file is in the cache we check if it has expired. If so then we delete it.
         if (file_exists($cacheFile)) {
             if ($this->cacheExpire !== 0 && (time() - filemtime($cacheFile)) > $this->cacheExpire) {
                 unlink($cacheFile);
@@ -363,12 +367,39 @@ class Thumbnail extends \yii\base\Component
             }
         }
 
-        if (!is_dir($cacheFilePath)) {
-            mkdir($cacheFilePath, 0755, true);
+        // Get Image from S3
+        $s3 = new S3();
+        $s3->setAuth($this->options['s3']['key'], $this->options['s3']['secret']);
+        $s3->setRegion($this->options['s3']['region']);
+        $s3->setSignatureVersion($this->options['s3']['version']);
+
+        $tempPath = \Yii::getAlias($this->tempPath);
+
+        // Create the temp folder is it doesnt exist
+        if (!is_dir($tempPath)) {
+            mkdir($tempPath, 0755, true);
         }
 
-        $this->image = Image::getImagine()->open($fileFullPath);
+        // Check object on S3
+        $tempFile = $this->tempPath . '/' . basename($filePath);
+        $objectInfo = $s3->getObjectInfo($bucket, $filePath);
 
+        if(!$objectInfo) {
+            return false;
+        }
+
+        // Download the image from S3 to temp folder
+        $object = $s3->getObject($bucket, $filePath, $tempFile);
+
+        // Make sure the original image has been downloaded from S3 to the temp folder
+        if (!is_file($tempFile)) {
+            return false;
+        }
+
+        // Use Imagine for image manipulation
+        $this->image = Image::getImagine()->open($tempFile);
+
+        // Perform the image manipulations set in the params
         foreach ($params as $key => $value) {
             switch ($key) {
                 case self::FUNCTION_THUMBNAIL :
@@ -386,6 +417,12 @@ class Thumbnail extends \yii\base\Component
             }
         }
 
+        // Create the cache folder is it doesnt exist
+        if (!is_dir($cacheFilePath)) {
+            mkdir($cacheFilePath, 0755, true);
+        }
+
+        // Save the thumbnail to the cache folder
         $this->image->save($cacheFile, [
             'quality' => $quality
         ]);
@@ -397,6 +434,10 @@ class Thumbnail extends \yii\base\Component
             }
         }
 
+        // Delete the original from the temp folder
+        unlink($tempFile);
+
+        // Return the cached thumbnail Url
         return $cacheUrl;
     }
 

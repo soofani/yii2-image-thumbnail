@@ -1,5 +1,7 @@
 # Yii2 image thumbnail
 
+This is an update to Aleksandr Sadovoj's yii2-image-thumbnail library. It uses Donovan Schönknecht's Amazon S3 library to enable reading and thumbnailing images stored in S3 buckets. 
+
 Create image thumbnails use Imagine. Thumbnail created and cached automatically.
 It allows you to create placeholder with service [http://placeholdit.imgix.net/](http://placeholdit.imgix.net/) or holder.js.
 
@@ -11,6 +13,8 @@ It allows you to create placeholder with service [http://placeholdit.imgix.net/]
 - Cache sorting to subdirectories
 - Caching placeholder from URL (placeholdit.imgix.net)
 - Use placeholdit.imgix.net & holder.js
+- Reads original images from Amazon S3
+
 
 ## Installation
 
@@ -40,6 +44,7 @@ Attach the component in your config file:
 - string `cachePath` = `@runtime/thumbnails` - Cache path alias
 - integer `cacheExpire` = `604800` - Cache expire time
 - array `options` - Other options (placeholder/quality/additional compression)
+- array `s3` - Amazon S3 config (key/secret/bucket)
 
 #### Default options:
 
@@ -55,6 +60,12 @@ Attach the component in your config file:
     'quality' => 92,
     'tinyPng' => [
         'apiKey' => null
+    ],
+    's3' => [
+        'key' => 'AWS-KEY',
+        'secret' => 'AWS-SECRET',
+        'region' => 'REGION',
+        'version' => 'SIGNATURE-VERSION'
     ]
 ]
 ```
@@ -68,18 +79,21 @@ Attach the component in your config file:
 
 ### Get cache image
 ```php
-echo Yii::$app->thumbnail->img($file, $params, $options);
+// Local storage 
+echo Yii::$app->thumbnail->img($file, $bucket, $params, $options);
+
 ```
 This method returns Html::img()
 
 #### Parameters
 - string `$file` required - Image file path
-- array `$params` required - Image manipulation methods. See Methods
+- string `$bucket` required - Bucket name 
+- array `$params` - Image manipulation methods. See Methods
 - array `$options` - options for Html::img()
 
 #### For example:
 ```php
-<?= Yii::$app->thumbnail->img(IMAGE_SRC, [
+<?= Yii::$app->thumbnail->img(IMAGE_SRC, $bucket, [
     'thumbnail' => [
         'width' => 320,
         'height' => 230,
@@ -93,17 +107,19 @@ This method returns Html::img()
 
 ### Get cache image url
 ```php
-echo Yii::$app->thumbnail->url($file, $params);
+// Local storage 
+echo Yii::$app->thumbnail->url($file, $bucket, $params);
 ```
 This method returns cache image url
 
 #### Parameters
 - string `$file` required - Image file path
+- string `$bucket` required - Bucket name 
 - array `$params` - Image manipulation methods. See Methods
 
 #### For example:
 ```php
-<?= Yii::$app->thumbnail->url(IMAGE_SRC, [
+<?= Yii::$app->thumbnail->url(IMAGE_SRC, $bucket, [
     'thumbnail' => [
         'width' => 320,
         'height' => 230,
