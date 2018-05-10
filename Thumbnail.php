@@ -116,15 +116,14 @@ class Thumbnail extends \yii\base\Component
     /**
      * Creates and caches the image thumbnail from S3 and returns <img> tag
      * @param string $file
-     * @param array $bucket
      * @param array $params
      * @param array $options
      * @param bool $schema
      * @return string
      */
-    public function img($file, $bucket, array $params, $options = [], $schema = false)
+    public function img($file, array $params, $options = [], $schema = false)
     {
-        $cacheFileSrc = $this->make($file, $bucket, $params);
+        $cacheFileSrc = $this->make($file, $params);
 
         if (!$cacheFileSrc) {
             if (isset($params['placeholder'])) {
@@ -144,14 +143,13 @@ class Thumbnail extends \yii\base\Component
     /**
      * Creates and caches the image thumbnail and returns image url
      * @param string $file
-     * @param array $bucket
      * @param array $params
      * @param bool $schema
      * @return string
      */
-    public function url($file, $bucket, array $params, $schema = false)
+    public function url($file, array $params, $schema = false)
     {
-        $cacheFileSrc = $this->make($file, $bucket, $params);
+        $cacheFileSrc = $this->make($file, $params);
 
         if (!$cacheFileSrc) {
             if (isset($params['placeholder'])) {
@@ -337,11 +335,10 @@ class Thumbnail extends \yii\base\Component
     /**
      * Make image from S3 and save to cache
      * @param string $filePath
-     * @param string $bucket
      * @param array $params
      * @return string
      */
-    private function make($filePath, $bucket, array $params)
+    private function make($filePath, array $params)
     {
 
         // Don't allow empty file name
@@ -381,7 +378,7 @@ class Thumbnail extends \yii\base\Component
         $s3->setRegion($this->options['s3']['region']);
         $s3->setSignatureVersion($this->options['s3']['version']);
 
-        $objectInfo = $s3->getObjectInfo($bucket, $filePath);
+        $objectInfo = $s3->getObjectInfo($this->options['s3']['bucket'], $filePath);
 
         if(!$objectInfo) {
             return false;
@@ -398,7 +395,7 @@ class Thumbnail extends \yii\base\Component
         $tempFile = $tempPath . '/' . basename($filePath);
 
         // Download the image from S3 to temp folder
-        $object = $s3->getObject($bucket, $filePath, $tempFile);
+        $object = $s3->getObject($this->options['s3']['bucket'], $filePath, $tempFile);
 
         // Make sure the original image has been downloaded from S3 to the temp folder
         if (!is_file($tempFile)) {

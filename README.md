@@ -65,7 +65,8 @@ Attach the component in your config file:
         'key' => 'AWS-KEY',
         'secret' => 'AWS-SECRET',
         'region' => 'REGION',
-        'version' => 'SIGNATURE-VERSION'
+        'version' => 'SIGNATURE-VERSION',
+        'bucket' => 'BUCKET-NAME'
     ]
 ]
 ```
@@ -80,20 +81,19 @@ Attach the component in your config file:
 ### Get cache image
 ```php
 // Local storage 
-echo Yii::$app->thumbnail->img($file, $bucket, $params, $options);
+echo Yii::$app->thumbnail->img($file, $params, $options);
 
 ```
 This method returns Html::img()
 
 #### Parameters
 - string `$file` required - Image file path
-- string `$bucket` required - Bucket name 
 - array `$params` - Image manipulation methods. See Methods
 - array `$options` - options for Html::img()
 
 #### For example:
 ```php
-<?= Yii::$app->thumbnail->img(IMAGE_SRC, $bucket, [
+<?= Yii::$app->thumbnail->img(IMAGE_SRC, [
     'thumbnail' => [
         'width' => 320,
         'height' => 230,
@@ -108,18 +108,17 @@ This method returns Html::img()
 ### Get cache image url
 ```php
 // Local storage 
-echo Yii::$app->thumbnail->url($file, $bucket, $params);
+echo Yii::$app->thumbnail->url($file, $params);
 ```
 This method returns cache image url
 
 #### Parameters
 - string `$file` required - Image file path
-- string `$bucket` required - Bucket name 
 - array `$params` - Image manipulation methods. See Methods
 
 #### For example:
 ```php
-<?= Yii::$app->thumbnail->url(IMAGE_SRC, $bucket, [
+<?= Yii::$app->thumbnail->url(IMAGE_SRC, [
     'thumbnail' => [
         'width' => 320,
         'height' => 230,
