@@ -1,5 +1,7 @@
 # Yii2 image thumbnail
 
+NOTE: This has now moved to: https://github.com/soofani/yii2-image-s3
+
 This is an update to Aleksandr Sadovoj's yii2-image-thumbnail library. It uses Donovan Schönknecht's Amazon S3 library to enable reading and thumbnailing images stored in S3 buckets. 
 
 Create image thumbnails use Imagine. Thumbnail created and cached automatically.
